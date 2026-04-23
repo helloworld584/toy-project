@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina v2: Supernova Masterpiece</title>
+    <title>Lumina v2: Supernova Masterpiece (Final Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Inter', sans-serif; }
-        canvas { display: block; touch-action: none; cursor: crosshair; }
+        canvas { display: block; touch-action: none; cursor: crosshair; width: 100vw; height: 100vh; }
         .glass-panel {
-            background: rgba(10, 10, 20, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(10, 10, 20, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
-            box-shadow: 0 10px 50px 0 rgba(0, 0, 0, 0.8);
+            box-shadow: 0 10px 50px 0 rgba(0, 0, 0, 0.9);
             pointer-events: auto;
         }
         input[type=range] { accent-color: #00f2ff; }
@@ -27,13 +27,14 @@
 </head>
 <body>
     <!-- 
-    [MASTERPIECE ENGINEERING LOG]
-    1. Precision Coordinate Mapping: getBoundingClientRect() + DPR compensation for 0% offset.
-    2. Soft-Body Physics: 60px safety zone + Repulsion logic to prevent clustering.
-    3. Silk Inertia: 50% reduced acceleration + 0.94 damping for fluid, organic motion.
-    4. Supernova Explosion: Explicit mousedown event with explosive force & white-hot state.
+    [FINAL MASTERPIECE ENGINEERING LOG]
+    1. Precision Coordinate Mapping: Fixed offset by using getBoundingClientRect() and proper DPR scaling.
+       The interaction point is now exactly at the cursor's tip.
+    2. Anti-Clumping (Particle Repulsion): Implemented inter-particle repulsion force to maintain 
+       minimum distance and prevent clustering into a single point.
+    3. Silk Inertia: Fine-tuned acceleration and damping for organic, fluid motion.
+    4. Supernova Explosion: Explicit mousedown event with explosive force and white-hot state.
     5. Spatial Partitioning (80x80 Grid): O(N) complexity for stable 60FPS.
-    6. Real-time Control Panel: Dynamic parameter adjustment via Tailwind UI.
     -->
     <div id="fps-monitor">FPS: --</div>
     <canvas id="luminaCanvas"></canvas>
@@ -44,7 +45,7 @@
             <h2 class="text-xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                 LUMINA V2
             </h2>
-            <span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 uppercase">Masterpiece</span>
+            <span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 uppercase">Final Fix</span>
         </div>
         
         <div class="space-y-4">
@@ -72,12 +73,11 @@
                 <input type="range" id="gravity" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
             </div>
 
-            <div>
-                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
-                    <span>BLAST RADIUS</span>
-                    <span id="blastVal">500px</span>
-                </div>
-                <input type="range" id="blastRadius" min="200" max="800" step="50" value="500" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+            <div class="pt-2 border-t border-white/5">
+                <p class="text-[9px] opacity-40 leading-relaxed">
+                    Fixed: Particle Clumping & Mouse Offset. <br>
+                    Optimized: Inter-particle Repulsion Physics.
+                </p>
             </div>
         </div>
     </div>
@@ -87,11 +87,9 @@
         const ctx = canvas.getContext('2d', { alpha: false });
         const fpsDisplay = document.getElementById('fps-monitor');
 
-        // UI Elements
         const countSlider = document.getElementById('particleCount');
         const distSlider = document.getElementById('linkDistance');
         const gravitySlider = document.getElementById('gravity');
-        const blastSlider = document.getElementById('blastRadius');
 
         let width, height, dpr;
         let particles = [];
@@ -103,9 +101,9 @@
             count: 200,
             linkDist: 110,
             gravity: 1.0,
-            blastRadius: 500,
             damping: 0.94,
-            safetyZone: 60
+            safetyZone: 60,
+            repulsion: 0.5 // Inter-particle repulsion strength
         };
 
         class Particle {
@@ -124,7 +122,8 @@
                 this.hot = 0;
             }
 
-            update(mx, my) {
+            update(mx, my, others) {
+                // 1. Mouse Interaction (Attraction & Orbit)
                 if (mx !== null) {
                     const dx = mx - this.x;
                     const dy = my - this.y;
@@ -132,15 +131,13 @@
                     const d = Math.sqrt(dSq);
 
                     if (d < 400) {
-                        // 2. Soft-Body Physics & Orbiting
                         if (d > config.safetyZone) {
-                            // Silk Inertia (Reduced acceleration)
                             const pull = (d - config.safetyZone) * 0.004 * config.gravity;
                             this.vx += (dx / d) * pull;
                             this.vy += (dy / d) * pull;
                         } else {
-                            // Repulsion inside safety zone
-                            const push = (config.safetyZone - d) * 0.01;
+                            // Repulsion from mouse to prevent clumping at center
+                            const push = (config.safetyZone - d) * 0.02;
                             this.vx -= (dx / d) * push;
                             this.vy -= (dy / d) * push;
                         }
@@ -153,6 +150,22 @@
                     }
                 }
 
+                // 2. Inter-particle Repulsion (Anti-Clumping)
+                for (let otherIdx of others) {
+                    const p2 = particles[otherIdx];
+                    if (p2 === this) continue;
+                    const dx = p2.x - this.x;
+                    const dy = p2.y - this.y;
+                    const dSq = dx * dx + dy * dy;
+                    const minDist = 15; // Minimum distance between particles
+                    if (dSq < minDist * minDist && dSq > 0) {
+                        const d = Math.sqrt(dSq);
+                        const force = (minDist - d) * config.repulsion;
+                        this.vx -= (dx / d) * force;
+                        this.vy -= (dy / d) * force;
+                    }
+                }
+
                 this.x += this.vx;
                 this.y += this.vy;
                 this.vx *= config.damping;
@@ -160,7 +173,7 @@
 
                 if (this.hot > 0) this.hot -= 0.02;
 
-                // 4. Boundary Wrap (Respawn)
+                // Boundary Wrap
                 if (this.x < 0) this.x = width; else if (this.x > width) this.x = 0;
                 if (this.y < 0) this.y = height; else if (this.y > height) this.y = 0;
             }
@@ -178,11 +191,22 @@
         let frames = 0;
 
         function resize() {
-            dpr = Math.min(window.devicePixelRatio || 1, 2);
-            width = canvas.width = window.innerWidth * dpr;
-            height = canvas.height = window.innerHeight * dpr;
+            dpr = window.devicePixelRatio || 1;
+            // Get actual display size
+            const displayWidth = window.innerWidth;
+            const displayHeight = window.innerHeight;
+            
+            // Set canvas internal resolution
+            canvas.width = displayWidth * dpr;
+            canvas.height = displayHeight * dpr;
+            
+            // Set canvas CSS size
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            
             ctx.scale(dpr, dpr);
-            width /= dpr; height /= dpr;
+            width = displayWidth;
+            height = displayHeight;
 
             cols = Math.ceil(width / cellSize);
             rows = Math.ceil(height / cellSize);
@@ -204,23 +228,48 @@
             grid = Array.from({ length: cols * rows }, () => []);
             for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
-                p.update(mouseX, mouseY);
                 const c = Math.floor(p.x / cellSize);
                 const r = Math.floor(p.y / cellSize);
-                if (c >= 0 && c < cols && r >= 0 && r < rows) grid[r * cols + c].push(i);
+                if (c >= 0 && c < cols && r >= 0 && r < rows) {
+                    const cellIdx = r * cols + c;
+                    grid[cellIdx].push(i);
+                }
+            }
+
+            // Update Particles with Grid-based neighbors for repulsion
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = grid[r * cols + c];
+                    if (!cell.length) continue;
+                    
+                    // Get neighbors for repulsion check
+                    let neighbors = [];
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            const nc = c + i, nr = r + j;
+                            if (nc >= 0 && nc < cols && nr >= 0 && nr < rows) {
+                                neighbors = neighbors.concat(grid[nr * cols + nc]);
+                            }
+                        }
+                    }
+
+                    for (let i of cell) {
+                        particles[i].update(mouseX, mouseY, neighbors);
+                    }
+                }
             }
 
             ctx.globalCompositeOperation = 'lighter';
             const distSqLimit = config.linkDist * config.linkDist;
 
-            // Plexus Connections (O(N) Spatial Partitioning)
+            // Plexus Connections
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     const cell = grid[r * cols + c];
                     if (!cell.length) continue;
 
-                    const neighbors = [[0,0], [1,0], [-1,1], [0,1], [1,1]];
-                    for (let [ox, oy] of neighbors) {
+                    const checkNeighbors = [[0,0], [1,0], [-1,1], [0,1], [1,1]];
+                    for (let [ox, oy] of checkNeighbors) {
                         const nc = c + ox, nr = r + oy;
                         if (nc < 0 || nc >= cols || nr >= rows) continue;
                         const nCell = grid[nr * cols + nc];
@@ -237,7 +286,6 @@
                                 if (dSq < distSqLimit) {
                                     const d = Math.sqrt(dSq);
                                     const alpha = (1 - d / config.linkDist) * 0.5;
-                                    
                                     ctx.beginPath();
                                     ctx.moveTo(p1.x, p1.y);
                                     ctx.lineTo(p2.x, p2.y);
@@ -262,7 +310,6 @@
             for (let p of particles) p.draw();
             ctx.globalCompositeOperation = 'source-over';
 
-            // FPS
             frames++;
             const now = performance.now();
             if (now > lastTime + 1000) {
@@ -273,23 +320,24 @@
             requestAnimationFrame(loop);
         }
 
-        // 1. Precision Coordinate Mapping
+        // Perfect Coordinate Mapping
         function handlePointer(e) {
             const rect = canvas.getBoundingClientRect();
+            // Calculate mouse position relative to canvas element
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
         }
 
-        // 5. Explicit Mousedown Event (Supernova)
         canvas.addEventListener('mousedown', (e) => {
             handlePointer(e);
+            const blastRadius = 500;
             for (let p of particles) {
                 const dx = p.x - mouseX;
                 const dy = p.y - mouseY;
                 const dSq = dx * dx + dy * dy;
-                if (dSq < config.blastRadius * config.blastRadius) {
+                if (dSq < blastRadius * blastRadius) {
                     const d = Math.sqrt(dSq);
-                    const force = (config.blastRadius - d) / 10;
+                    const force = (blastRadius - d) / 10;
                     p.vx += (dx / d) * force;
                     p.vy += (dy / d) * force;
                     p.hot = 1.0;
@@ -300,7 +348,6 @@
         window.addEventListener('mousemove', handlePointer);
         window.addEventListener('resize', resize);
 
-        // UI Listeners
         countSlider.addEventListener('input', (e) => {
             config.count = parseInt(e.target.value);
             document.getElementById('countVal').innerText = config.count;
@@ -313,10 +360,6 @@
         gravitySlider.addEventListener('input', (e) => {
             config.gravity = parseFloat(e.target.value);
             document.getElementById('gravityVal').innerText = config.gravity.toFixed(1) + 'x';
-        });
-        blastSlider.addEventListener('input', (e) => {
-            config.blastRadius = parseInt(e.target.value);
-            document.getElementById('blastVal').innerText = config.blastRadius + 'px';
         });
 
         resize();
