@@ -3,63 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina v2: Supernova Edition (Final)</title>
+    <title>Lumina v2: Supernova Masterpiece</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Inter', sans-serif; }
         canvas { display: block; touch-action: none; cursor: crosshair; }
         .glass-panel {
-            background: rgba(10, 10, 20, 0.4);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.6);
+            border-radius: 24px;
+            box-shadow: 0 10px 50px 0 rgba(0, 0, 0, 0.8);
+            pointer-events: auto;
         }
+        input[type=range] { accent-color: #00f2ff; }
         #fps-monitor {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            font-family: monospace;
-            font-size: 10px;
-            color: #00ff00;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 2px 6px;
-            border-radius: 4px;
-            pointer-events: none;
-            z-index: 100;
-            opacity: 0.6;
+            position: fixed; top: 10px; left: 10px; font-family: monospace; font-size: 10px;
+            color: #00ff00; background: rgba(0, 0, 0, 0.5); padding: 2px 6px; border-radius: 4px;
+            pointer-events: none; z-index: 100; opacity: 0.5;
         }
     </style>
 </head>
 <body>
     <!-- 
-    [FINAL ENGINEERING LOG]
-    1. Precision Coordinate Mapping: Uses getBoundingClientRect() for pixel-perfect mouse interaction.
-    2. Intelligent Orbiting: Particles maintain a 50px buffer from the cursor to prevent clustering.
-    3. Supernova Explosion: Physics-based impulse on click with temporary white-hot color state.
-    4. Damping & Friction: Realistic air resistance for fluid, organic movement.
-    5. Spatial Partitioning (80x80 Grid): O(N) complexity maintained for 60FPS stability.
-    6. Star Dust Layer: 100 static micro-particles for enhanced spatial depth.
+    [MASTERPIECE ENGINEERING LOG]
+    1. Precision Coordinate Mapping: getBoundingClientRect() + DPR compensation for 0% offset.
+    2. Soft-Body Physics: 60px safety zone + Repulsion logic to prevent clustering.
+    3. Silk Inertia: 50% reduced acceleration + 0.94 damping for fluid, organic motion.
+    4. Supernova Explosion: Explicit mousedown event with explosive force & white-hot state.
+    5. Spatial Partitioning (80x80 Grid): O(N) complexity for stable 60FPS.
+    6. Real-time Control Panel: Dynamic parameter adjustment via Tailwind UI.
     -->
     <div id="fps-monitor">FPS: --</div>
     <canvas id="luminaCanvas"></canvas>
 
-    <div class="fixed bottom-8 right-8 w-80 glass-panel p-6 text-white select-none pointer-events-none">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-black tracking-tighter bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+    <!-- UI Controller -->
+    <div class="fixed bottom-8 right-8 w-80 glass-panel p-6 text-white select-none">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                 LUMINA V2
             </h2>
-            <span class="text-[10px] px-2 py-1 rounded-full bg-pink-500/20 text-pink-400 font-bold border border-pink-500/30 uppercase">Supernova</span>
+            <span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 uppercase">Masterpiece</span>
         </div>
         
-        <div class="space-y-2">
-            <p class="text-[10px] font-bold text-pink-400 uppercase tracking-widest">Interaction Guide</p>
-            <ul class="text-[9px] opacity-60 space-y-1 list-disc list-inside">
-                <li>Move mouse to attract & orbit particles</li>
-                <li>Click to trigger Supernova explosion</li>
-                <li>Observe 60FPS stable performance</li>
-            </ul>
+        <div class="space-y-4">
+            <div>
+                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                    <span>PARTICLE COUNT</span>
+                    <span id="countVal">200</span>
+                </div>
+                <input type="range" id="particleCount" min="50" max="400" value="200" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                    <span>LINK DISTANCE</span>
+                    <span id="distVal">110px</span>
+                </div>
+                <input type="range" id="linkDistance" min="50" max="200" value="110" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                    <span>GRAVITY</span>
+                    <span id="gravityVal">1.0x</span>
+                </div>
+                <input type="range" id="gravity" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                    <span>BLAST RADIUS</span>
+                    <span id="blastVal">500px</span>
+                </div>
+                <input type="range" id="blastRadius" min="200" max="800" step="50" value="500" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+            </div>
         </div>
     </div>
 
@@ -68,27 +87,97 @@
         const ctx = canvas.getContext('2d', { alpha: false });
         const fpsDisplay = document.getElementById('fps-monitor');
 
+        // UI Elements
+        const countSlider = document.getElementById('particleCount');
+        const distSlider = document.getElementById('linkDistance');
+        const gravitySlider = document.getElementById('gravity');
+        const blastSlider = document.getElementById('blastRadius');
+
         let width, height, dpr;
-        const particleCount = 220;
-        const starCount = 100;
-        const linkDist = 110;
-        const linkDistSq = linkDist * linkDist;
+        let particles = [];
         const cellSize = 80;
         let cols, rows;
-
-        // Memory-efficient Typed Arrays
-        const data = new Float32Array(particleCount * 7); // x, y, vx, vy, z, opacity, state(0:normal, 1:hot)
-        const X=0, Y=1, VX=2, VY=3, Z=4, OP=5, ST=6;
-
-        // Static Star Dust
-        const stars = new Float32Array(starCount * 3); // x, y, size
-
-        let mouseX = -1000, mouseY = -1000;
         let grid = [];
+
+        let config = {
+            count: 200,
+            linkDist: 110,
+            gravity: 1.0,
+            blastRadius: 500,
+            damping: 0.94,
+            safetyZone: 60
+        };
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.z = Math.random() * 100;
+                this.radius = 1.2 + (1 - this.z / 100) * 2.5;
+                this.opacity = 0.2 + (1 - this.z / 100) * 0.6;
+                this.hot = 0;
+            }
+
+            update(mx, my) {
+                if (mx !== null) {
+                    const dx = mx - this.x;
+                    const dy = my - this.y;
+                    const dSq = dx * dx + dy * dy;
+                    const d = Math.sqrt(dSq);
+
+                    if (d < 400) {
+                        // 2. Soft-Body Physics & Orbiting
+                        if (d > config.safetyZone) {
+                            // Silk Inertia (Reduced acceleration)
+                            const pull = (d - config.safetyZone) * 0.004 * config.gravity;
+                            this.vx += (dx / d) * pull;
+                            this.vy += (dy / d) * pull;
+                        } else {
+                            // Repulsion inside safety zone
+                            const push = (config.safetyZone - d) * 0.01;
+                            this.vx -= (dx / d) * push;
+                            this.vy -= (dy / d) * push;
+                        }
+
+                        // Orbital Force
+                        const angle = Math.atan2(dy, dx);
+                        const orbit = 0.025 * config.gravity * (400 - d) / 400;
+                        this.vx += Math.cos(angle + 1.57) * orbit;
+                        this.vy += Math.sin(angle + 1.57) * orbit;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= config.damping;
+                this.vy *= config.damping;
+
+                if (this.hot > 0) this.hot -= 0.02;
+
+                // 4. Boundary Wrap (Respawn)
+                if (this.x < 0) this.x = width; else if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height; else if (this.y > height) this.y = 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, 6.28);
+                ctx.fillStyle = this.hot > 0.1 ? `rgba(255, 255, 255, ${this.hot})` : `rgba(0, 242, 255, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        let mouseX = null, mouseY = null;
         let lastTime = performance.now();
         let frames = 0;
 
-        function init() {
+        function resize() {
             dpr = Math.min(window.devicePixelRatio || 1, 2);
             width = canvas.width = window.innerWidth * dpr;
             height = canvas.height = window.innerHeight * dpr;
@@ -97,93 +186,34 @@
 
             cols = Math.ceil(width / cellSize);
             rows = Math.ceil(height / cellSize);
-            grid = Array.from({ length: cols * rows }, () => []);
+            initParticles();
+        }
 
-            // Initialize Particles
-            for (let i = 0; i < particleCount; i++) {
-                const idx = i * 7;
-                data[idx + X] = Math.random() * width;
-                data[idx + Y] = Math.random() * height;
-                data[idx + VX] = (Math.random() - 0.5) * 2;
-                data[idx + VY] = (Math.random() - 0.5) * 2;
-                data[idx + Z] = Math.random() * 100;
-                data[idx + OP] = 0.2 + (1 - data[idx + Z] / 100) * 0.6;
-                data[idx + ST] = 0;
-            }
-
-            // Initialize Star Dust
-            for (let i = 0; i < starCount; i++) {
-                stars[i*3] = Math.random() * width;
-                stars[i*3+1] = Math.random() * height;
-                stars[i*3+2] = Math.random() * 0.8;
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < config.count; i++) {
+                particles.push(new Particle());
             }
         }
 
-        function update() {
-            for (let i = 0; i < grid.length; i++) grid[i].length = 0;
-
-            for (let i = 0; i < particleCount; i++) {
-                const idx = i * 7;
-                
-                // 1. Precision Mouse Interaction
-                const dx = mouseX - data[idx + X];
-                const dy = mouseY - data[idx + Y];
-                const dSq = dx * dx + dy * dy;
-                
-                if (dSq < 160000) { // 400px radius
-                    const d = Math.sqrt(dSq);
-                    
-                    // 2. Intelligent Orbiting (Stop pulling if < 50px)
-                    if (d > 50) {
-                        const pull = (d - 50) * 0.008;
-                        data[idx + VX] += (dx / d) * pull;
-                        data[idx + VY] += (dy / d) * pull;
-                    }
-
-                    // Orbital Force
-                    const angle = Math.atan2(dy, dx);
-                    const orbit = 0.03 * (400 - d) / 400;
-                    data[idx + VX] += Math.cos(angle + 1.57) * orbit;
-                    data[idx + VY] += Math.sin(angle + 1.57) * orbit;
-                }
-
-                // 3. Damping & Friction
-                data[idx + X] += data[idx + VX];
-                data[idx + Y] += data[idx + VY];
-                data[idx + VX] *= 0.94; // Air resistance
-                data[idx + VY] *= 0.94;
-
-                // State Recovery (Cool down from white-hot)
-                if (data[idx + ST] > 0) data[idx + ST] -= 0.02;
-
-                // Boundary Wrap
-                if (data[idx + X] < 0) data[idx + X] = width; else if (data[idx + X] > width) data[idx + X] = 0;
-                if (data[idx + Y] < 0) data[idx + Y] = height; else if (data[idx + Y] > height) data[idx + Y] = 0;
-
-                // Spatial Binning
-                const c = Math.floor(data[idx + X] / cellSize);
-                const r = Math.floor(data[idx + Y] / cellSize);
-                if (c >= 0 && c < cols && r >= 0 && r < rows) {
-                    grid[r * cols + c].push(i);
-                }
-            }
-        }
-
-        function render() {
+        function loop() {
             ctx.fillStyle = '#020205';
             ctx.fillRect(0, 0, width, height);
 
-            // Draw Star Dust
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-            for (let i = 0; i < starCount; i++) {
-                ctx.beginPath();
-                ctx.arc(stars[i*3], stars[i*3+1], stars[i*3+2], 0, 6.28);
-                ctx.fill();
+            // Update Grid
+            grid = Array.from({ length: cols * rows }, () => []);
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.update(mouseX, mouseY);
+                const c = Math.floor(p.x / cellSize);
+                const r = Math.floor(p.y / cellSize);
+                if (c >= 0 && c < cols && r >= 0 && r < rows) grid[r * cols + c].push(i);
             }
-            
+
             ctx.globalCompositeOperation = 'lighter';
-            
-            // Plexus Connections (Spatial Partitioning)
+            const distSqLimit = config.linkDist * config.linkDist;
+
+            // Plexus Connections (O(N) Spatial Partitioning)
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     const cell = grid[r * cols + c];
@@ -196,34 +226,31 @@
                         const nCell = grid[nr * cols + nc];
 
                         for (let i of cell) {
-                            const idx1 = i * 7;
+                            const p1 = particles[i];
                             for (let j of nCell) {
                                 if (i === j) continue;
-                                const idx2 = j * 7;
-                                
-                                const dx = data[idx1 + X] - data[idx2 + X];
-                                const dy = data[idx1 + Y] - data[idx2 + Y];
+                                const p2 = particles[j];
+                                const dx = p1.x - p2.x;
+                                const dy = p1.y - p2.y;
                                 const dSq = dx * dx + dy * dy;
 
-                                if (dSq < linkDistSq) {
+                                if (dSq < distSqLimit) {
                                     const d = Math.sqrt(dSq);
-                                    const alpha = (1 - d / linkDist) * 0.4;
+                                    const alpha = (1 - d / config.linkDist) * 0.5;
                                     
                                     ctx.beginPath();
-                                    ctx.moveTo(data[idx1 + X], data[idx1 + Y]);
-                                    ctx.lineTo(data[idx2 + X], data[idx2 + Y]);
+                                    ctx.moveTo(p1.x, p1.y);
+                                    ctx.lineTo(p2.x, p2.y);
                                     
-                                    // Dynamic Color: White-hot or Purple-Pink
-                                    const isHot = Math.max(data[idx1 + ST], data[idx2 + ST]);
-                                    if (isHot > 0.1) {
-                                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * isHot * 2})`;
+                                    if (p1.hot > 0.1 || p2.hot > 0.1) {
+                                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 2})`;
                                     } else {
-                                        const grad = ctx.createLinearGradient(data[idx1 + X], data[idx1 + Y], data[idx2 + X], data[idx2 + Y]);
-                                        grad.addColorStop(0, `rgba(109, 40, 217, ${alpha})`);
-                                        grad.addColorStop(1, `rgba(219, 39, 119, ${alpha})`);
+                                        const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                                        grad.addColorStop(0, `rgba(0, 242, 255, ${alpha})`);
+                                        grad.addColorStop(1, `rgba(188, 19, 254, ${alpha})`);
                                         ctx.strokeStyle = grad;
                                     }
-                                    ctx.lineWidth = (1 - d / linkDist) * 1.2;
+                                    ctx.lineWidth = (1 - d / config.linkDist) * 1.2;
                                     ctx.stroke();
                                 }
                             }
@@ -232,63 +259,67 @@
                 }
             }
 
-            // Draw Particles
-            for (let i = 0; i < particleCount; i++) {
-                const idx = i * 7;
-                const isHot = data[idx + ST];
-                ctx.beginPath();
-                ctx.arc(data[idx + X], data[idx + Y], 1.5, 0, 6.28);
-                ctx.fillStyle = isHot > 0.1 ? `rgba(255, 255, 255, ${isHot})` : `rgba(219, 39, 119, ${data[idx + OP]})`;
-                ctx.fill();
-            }
-
+            for (let p of particles) p.draw();
             ctx.globalCompositeOperation = 'source-over';
-            
-            // FPS Counter
+
+            // FPS
             frames++;
             const now = performance.now();
             if (now > lastTime + 1000) {
                 fpsDisplay.innerText = `FPS: ${Math.round((frames * 1000) / (now - lastTime))}`;
-                frames = 0;
-                lastTime = now;
+                frames = 0; lastTime = now;
             }
 
             requestAnimationFrame(loop);
         }
 
-        function loop() {
-            update();
-            render();
-        }
-
-        // Event Handlers
+        // 1. Precision Coordinate Mapping
         function handlePointer(e) {
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
         }
 
-        window.addEventListener('mousemove', handlePointer);
-        window.addEventListener('mousedown', (e) => {
+        // 5. Explicit Mousedown Event (Supernova)
+        canvas.addEventListener('mousedown', (e) => {
             handlePointer(e);
-            // Supernova Explosion
-            for (let i = 0; i < particleCount; i++) {
-                const idx = i * 7;
-                const dx = data[idx + X] - mouseX;
-                const dy = data[idx + Y] - mouseY;
+            for (let p of particles) {
+                const dx = p.x - mouseX;
+                const dy = p.y - mouseY;
                 const dSq = dx * dx + dy * dy;
-                if (dSq < 250000) {
+                if (dSq < config.blastRadius * config.blastRadius) {
                     const d = Math.sqrt(dSq);
-                    const force = (500 - d) / 10;
-                    data[idx + VX] += (dx / d) * force;
-                    data[idx + VY] += (dy / d) * force;
-                    data[idx + ST] = 1.0; // Set to white-hot state
+                    const force = (config.blastRadius - d) / 10;
+                    p.vx += (dx / d) * force;
+                    p.vy += (dy / d) * force;
+                    p.hot = 1.0;
                 }
             }
         });
 
-        window.addEventListener('resize', init);
-        init();
+        window.addEventListener('mousemove', handlePointer);
+        window.addEventListener('resize', resize);
+
+        // UI Listeners
+        countSlider.addEventListener('input', (e) => {
+            config.count = parseInt(e.target.value);
+            document.getElementById('countVal').innerText = config.count;
+            initParticles();
+        });
+        distSlider.addEventListener('input', (e) => {
+            config.linkDist = parseInt(e.target.value);
+            document.getElementById('distVal').innerText = config.linkDist + 'px';
+        });
+        gravitySlider.addEventListener('input', (e) => {
+            config.gravity = parseFloat(e.target.value);
+            document.getElementById('gravityVal').innerText = config.gravity.toFixed(1) + 'x';
+        });
+        blastSlider.addEventListener('input', (e) => {
+            config.blastRadius = parseInt(e.target.value);
+            document.getElementById('blastVal').innerText = config.blastRadius + 'px';
+        });
+
+        resize();
         loop();
     </script>
 </body>
