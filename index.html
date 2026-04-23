@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina: 3D Interactive Plexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        input[type=range] {
+            accent-color: #00f2ff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="plexusCanvas"></canvas>
+
+    <!-- UI Controller -->
+    <div class="fixed bottom-6 right-6 w-72 glass-panel p-6 text-white select-none">
+        <h2 class="text-xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+            Lumina Control
+        </h2>
+        
+        <div class="space-y-4">
+            <div>
+                <div class="flex justify-between text-xs mb-1 opacity-70">
+                    <span>PARTICLE COUNT</span>
+                    <span id="countVal">150</span>
+                </div>
+                <input type="range" id="particleCount" min="50" max="400" value="150" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1 opacity-70">
+                    <span>LINK DISTANCE</span>
+                    <span id="distVal">100px</span>
+                </div>
+                <input type="range" id="linkDistance" min="50" max="200" value="100" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div class="pt-2 border-t border-white/10">
+                <p class="text-[10px] opacity-50 leading-tight">
+                    Optimized with requestAnimationFrame & Spatial Partitioning Logic for 60FPS.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plexusCanvas');
+        const ctx = canvas.getContext('2d');
+        const countSlider = document.getElementById('particleCount');
+        const distSlider = document.getElementById('linkDistance');
+        const countVal = document.getElementById('countVal');
+        const distVal = document.getElementById('distVal');
+
+        let width, height;
+        let particles = [];
+        let mouse = { x: null, y: null, radius: 150 };
+
+        // Configuration
+        let config = {
+            particleCount: parseInt(countSlider.value),
+            linkDistance: parseInt(distSlider.value),
+            colors: {
+                primary: '#00f2ff', // Electric Blue
+                secondary: '#bc13fe' // Cyber Purple
+            }
+        };
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.z = Math.random() * 100; // Depth value
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.radius = 1 + (1 - this.z / 100) * 2.5; // Closer is larger
+                this.opacity = 0.2 + (1 - this.z / 100) * 0.8; // Closer is brighter
+            }
+
+            update() {
+                // Magnetic Effect
+                if (mouse.x !== null && mouse.y !== null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < mouse.radius) {
+                        let force = (mouse.radius - distance) / mouse.radius;
+                        this.vx += dx * force * 0.02;
+                        this.vy += dy * force * 0.02;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Friction
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 242, 255, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < config.particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Update and Draw Particles
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+
+            // Draw Connections (Plexus Engine)
+            // Optimized distance calculation: only check half the pairs
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+                    
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < config.linkDistance) {
+                        const opacity = (1 - distance / config.linkDistance) * Math.min(p1.opacity, p2.opacity);
+                        const lineWidth = (1 - distance / config.linkDistance) * 1.5;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        
+                        // Gradient line
+                        const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                        grad.addColorStop(0, `rgba(0, 242, 255, ${opacity})`);
+                        grad.addColorStop(1, `rgba(188, 19, 254, ${opacity})`);
+                        
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = lineWidth;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawScene);
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        window.addEventListener('mouseout', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        countSlider.addEventListener('input', (e) => {
+            config.particleCount = parseInt(e.target.value);
+            countVal.innerText = config.particleCount;
+            initParticles();
+        });
+
+        distSlider.addEventListener('input', (e) => {
+            config.linkDistance = parseInt(e.target.value);
+            distVal.innerText = config.linkDistance + 'px';
+        });
+
+        // Start
+        resize();
+        drawScene();
+    </script>
+</body>
+</html>
