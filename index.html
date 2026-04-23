@@ -3,84 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina: 3D Interactive Plexus</title>
+    <title>Lumina v2: Supernova Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #050505;
+            background-color: #020205;
             font-family: 'Inter', sans-serif;
         }
         canvas {
             display: block;
         }
         .glass-panel {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(10, 10, 20, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.6);
         }
         input[type=range] {
-            accent-color: #00f2ff;
+            accent-color: #db2777;
+        }
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
     </style>
 </head>
 <body>
-    <canvas id="plexusCanvas"></canvas>
+    <canvas id="supernovaCanvas"></canvas>
 
     <!-- UI Controller -->
-    <div class="fixed bottom-6 right-6 w-72 glass-panel p-6 text-white select-none">
-        <h2 class="text-xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-            Lumina Control
-        </h2>
+    <div class="fixed bottom-8 right-8 w-80 glass-panel p-6 text-white select-none">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-black tracking-tighter bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                LUMINA V2
+            </h2>
+            <span class="text-[10px] px-2 py-1 rounded-full bg-pink-500/20 text-pink-400 font-bold border border-pink-500/30">SUPERNOVA</span>
+        </div>
         
-        <div class="space-y-4">
+        <div class="space-y-5">
             <div>
-                <div class="flex justify-between text-xs mb-1 opacity-70">
-                    <span>PARTICLE COUNT</span>
-                    <span id="countVal">150</span>
+                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                    <span>ENERGY INTENSITY</span>
+                    <span id="intensityVal">1.0x</span>
                 </div>
-                <input type="range" id="particleCount" min="50" max="400" value="150" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                <input type="range" id="energyIntensity" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer">
             </div>
 
-            <div>
-                <div class="flex justify-between text-xs mb-1 opacity-70">
-                    <span>LINK DISTANCE</span>
-                    <span id="distVal">100px</span>
+            <div class="pt-3 border-t border-white/5">
+                <div class="grid grid-cols-2 gap-2 text-[9px] opacity-40 uppercase font-medium">
+                    <div class="flex items-center gap-1">
+                        <div class="w-1 h-1 rounded-full bg-purple-500"></div>
+                        Spring Physics
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-1 h-1 rounded-full bg-pink-500"></div>
+                        Orbital Force
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-1 h-1 rounded-full bg-blue-500"></div>
+                        Velocity Glow
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-1 h-1 rounded-full bg-white"></div>
+                        Click Impact
+                    </div>
                 </div>
-                <input type="range" id="linkDistance" min="50" max="200" value="100" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-            </div>
-
-            <div class="pt-2 border-t border-white/10">
-                <p class="text-[10px] opacity-50 leading-tight">
-                    Optimized with requestAnimationFrame & Spatial Partitioning Logic for 60FPS.
-                </p>
             </div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('plexusCanvas');
+        const canvas = document.getElementById('supernovaCanvas');
         const ctx = canvas.getContext('2d');
-        const countSlider = document.getElementById('particleCount');
-        const distSlider = document.getElementById('linkDistance');
-        const countVal = document.getElementById('countVal');
-        const distVal = document.getElementById('distVal');
+        const intensitySlider = document.getElementById('energyIntensity');
+        const intensityVal = document.getElementById('intensityVal');
 
         let width, height;
         let particles = [];
-        let mouse = { x: null, y: null, radius: 150 };
+        let mouse = { x: null, y: null, down: false };
+        let shakeTime = 0;
 
         // Configuration
         let config = {
-            particleCount: parseInt(countSlider.value),
-            linkDistance: parseInt(distSlider.value),
+            particleCount: 220,
+            linkDistance: 120,
+            intensity: 1.0,
+            spring: 0.005,
+            friction: 0.96,
+            orbit: 0.02,
             colors: {
-                primary: '#00f2ff', // Electric Blue
-                secondary: '#bc13fe' // Cyber Purple
+                deepPurple: '#6D28D9',
+                electricPink: '#DB2777',
+                neonBlue: '#00f2ff'
             }
         };
 
@@ -92,45 +115,90 @@
             init() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
-                this.z = Math.random() * 100; // Depth value
-                this.vx = (Math.random() - 0.5) * 1.5;
-                this.vy = (Math.random() - 0.5) * 1.5;
-                this.radius = 1 + (1 - this.z / 100) * 2.5; // Closer is larger
-                this.opacity = 0.2 + (1 - this.z / 100) * 0.8; // Closer is brighter
+                this.z = Math.random() * 100;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = 1.2 + (1 - this.z / 100) * 2.8;
+                this.baseOpacity = 0.3 + (1 - this.z / 100) * 0.7;
+                this.speed = 0;
+            }
+
+            applyForce(fx, fy) {
+                this.vx += fx * config.intensity;
+                this.vy += fy * config.intensity;
             }
 
             update() {
-                // Magnetic Effect
+                // 1. Mouse Interaction (Spring & Orbit)
                 if (mouse.x !== null && mouse.y !== null) {
                     let dx = mouse.x - this.x;
                     let dy = mouse.y - this.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let dist = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (distance < mouse.radius) {
-                        let force = (mouse.radius - distance) / mouse.radius;
-                        this.vx += dx * force * 0.02;
-                        this.vy += dy * force * 0.02;
+                    if (dist < 400) {
+                        // Spring Force
+                        let force = dist * config.spring;
+                        this.vx += (dx / dist) * force;
+                        this.vy += (dy / dist) * force;
+
+                        // Orbital Force (Perpendicular to radius)
+                        let angle = Math.atan2(dy, dx);
+                        this.vx += Math.cos(angle + Math.PI/2) * config.orbit * config.intensity * (400 - dist) / 400;
+                        this.vy += Math.sin(angle + Math.PI/2) * config.orbit * config.intensity * (400 - dist) / 400;
                     }
                 }
 
+                // 2. Physics
                 this.x += this.vx;
                 this.y += this.vy;
+                this.vx *= config.friction;
+                this.vy *= config.friction;
 
-                // Friction
-                this.vx *= 0.98;
-                this.vy *= 0.98;
+                // 3. Speed calculation for visual effects
+                this.speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
 
-                // Bounce off edges
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
+                // 4. Boundaries
+                if (this.x < 0) { this.x = 0; this.vx *= -1; }
+                if (this.x > width) { this.x = width; this.vx *= -1; }
+                if (this.y < 0) { this.y = 0; this.vy *= -1; }
+                if (this.y > height) { this.y = height; this.vy *= -1; }
             }
 
             draw() {
+                // Velocity-based Glow
+                let glow = Math.min(this.speed * 2, 10);
+                ctx.shadowBlur = glow * config.intensity;
+                ctx.shadowColor = config.colors.electricPink;
+
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(0, 242, 255, ${this.opacity})`;
+                
+                // Color based on speed
+                let r = 109 + (this.speed * 20);
+                let g = 40;
+                let b = 217 + (this.speed * 10);
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${this.baseOpacity})`;
                 ctx.fill();
+                
+                ctx.shadowBlur = 0; // Reset for performance
             }
+        }
+
+        function createImpact(x, y) {
+            particles.forEach(p => {
+                let dx = p.x - x;
+                let dy = p.y - y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 500) {
+                    let force = (500 - dist) / 10;
+                    p.vx += (dx / dist) * force;
+                    p.vy += (dy / dist) * force;
+                }
+            });
+            
+            // Screen Shake
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 400);
         }
 
         function resize() {
@@ -147,45 +215,50 @@
         }
 
         function drawScene() {
-            ctx.clearRect(0, 0, width, height);
+            // Particle Trails (Semi-transparent clear)
+            ctx.fillStyle = 'rgba(2, 2, 5, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Global Composite Operation for Glow effect
+            ctx.globalCompositeOperation = 'lighter';
 
             // Update and Draw Particles
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                particles[i].draw();
-            }
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
 
-            // Draw Connections (Plexus Engine)
-            // Optimized distance calculation: only check half the pairs
+            // Plexus Connections
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const p1 = particles[i];
                     const p2 = particles[j];
-                    
                     const dx = p1.x - p2.x;
                     const dy = p1.y - p2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    if (distance < config.linkDistance) {
-                        const opacity = (1 - distance / config.linkDistance) * Math.min(p1.opacity, p2.opacity);
-                        const lineWidth = (1 - distance / config.linkDistance) * 1.5;
+                    if (dist < config.linkDistance) {
+                        // Velocity-based Opacity
+                        let avgSpeed = (p1.speed + p2.speed) / 2;
+                        let opacity = (1 - dist / config.linkDistance) * (0.2 + avgSpeed * 0.15) * config.intensity;
                         
                         ctx.beginPath();
                         ctx.moveTo(p1.x, p1.y);
                         ctx.lineTo(p2.x, p2.y);
                         
-                        // Gradient line
-                        const grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-                        grad.addColorStop(0, `rgba(0, 242, 255, ${opacity})`);
-                        grad.addColorStop(1, `rgba(188, 19, 254, ${opacity})`);
+                        // Neon Gradient: Deep Purple to Electric Pink
+                        let grad = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                        grad.addColorStop(0, `rgba(109, 40, 217, ${opacity})`);
+                        grad.addColorStop(1, `rgba(219, 39, 119, ${opacity})`);
                         
                         ctx.strokeStyle = grad;
-                        ctx.lineWidth = lineWidth;
+                        ctx.lineWidth = (1 - dist / config.linkDistance) * 2 * config.intensity;
                         ctx.stroke();
                     }
                 }
             }
 
+            ctx.globalCompositeOperation = 'source-over';
             requestAnimationFrame(drawScene);
         }
 
@@ -195,20 +268,18 @@
             mouse.x = e.clientX;
             mouse.y = e.clientY;
         });
-        window.addEventListener('mouseout', () => {
-            mouse.x = null;
-            mouse.y = null;
+        window.addEventListener('mousedown', (e) => {
+            createImpact(e.clientX, e.clientY);
+        });
+        window.addEventListener('touchstart', (e) => {
+            if(e.touches.length > 0) {
+                createImpact(e.touches[0].clientX, e.touches[0].clientY);
+            }
         });
 
-        countSlider.addEventListener('input', (e) => {
-            config.particleCount = parseInt(e.target.value);
-            countVal.innerText = config.particleCount;
-            initParticles();
-        });
-
-        distSlider.addEventListener('input', (e) => {
-            config.linkDistance = parseInt(e.target.value);
-            distVal.innerText = config.linkDistance + 'px';
+        intensitySlider.addEventListener('input', (e) => {
+            config.intensity = parseFloat(e.target.value);
+            intensityVal.innerText = config.intensity.toFixed(1) + 'x';
         });
 
         // Start
