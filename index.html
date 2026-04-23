@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina v2: Supernova Masterpiece (Extended)</title>
+    <title>Lumina v2: Audio-Reactive Masterpiece</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Inter', sans-serif; }
         canvas { display: block; touch-action: none; cursor: crosshair; width: 100vw; height: 100vh; }
         .glass-panel {
-            background: rgba(10, 10, 20, 0.75);
+            background: rgba(10, 10, 20, 0.8);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -23,17 +23,31 @@
             color: #00ff00; background: rgba(0, 0, 0, 0.5); padding: 2px 6px; border-radius: 4px;
             pointer-events: none; z-index: 100; opacity: 0.5;
         }
+        .audio-input-label {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .audio-input-label:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: rgba(0, 242, 255, 0.5);
+        }
+        .btn-toggle {
+            transition: all 0.2s ease;
+        }
+        .btn-toggle:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
     <!-- 
-    [EXTENDED MASTERPIECE ENGINEERING LOG]
-    1. Particle Capacity Expansion: Increased upper limit to 800 particles. 
-       Maintains 60FPS via O(N) Spatial Partitioning.
-    2. Connection Limiter: Added 'Max Connections' parameter to control visual density and CPU load.
-    3. Precision Coordinate Mapping: Zero-offset mouse interaction via getBoundingClientRect().
-    4. Anti-Clumping Physics: Inter-particle repulsion prevents clustering into a single point.
-    5. Silk Inertia & Orbit: Fluid, organic motion with fine-tuned damping.
+    [AUDIO-REACTIVE MASTERPIECE ENGINEERING LOG]
+    1. Web Audio API & FFT: Real-time frequency analysis (Bass, Mid, High).
+    2. Audio-Reactive Physics: 
+       - Bass: Triggers radial repulsion (heartbeat effect).
+       - Mid/High: Modulates orbit speed and link distance.
+       - Volume: Controls line thickness and glow intensity.
+    3. Hybrid Engine: Seamlessly blends mouse interaction with audio data.
+    4. O(N) Spatial Partitioning: Maintained 60FPS with 250+ particles.
+    5. Zero-Offset Mapping: Perfect mouse coordinate synchronization.
     -->
     <div id="fps-monitor">FPS: --</div>
     <canvas id="luminaCanvas"></canvas>
@@ -44,46 +58,47 @@
             <h2 class="text-xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
                 LUMINA V2
             </h2>
-            <span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 uppercase">Extended</span>
+            <span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 uppercase tracking-widest">Audio Reactive</span>
         </div>
         
-        <div class="space-y-4">
-            <div>
-                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
-                    <span>PARTICLE COUNT</span>
-                    <span id="countVal">250</span>
-                </div>
-                <input type="range" id="particleCount" min="50" max="800" value="250" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+        <div class="space-y-5">
+            <!-- Audio Upload & Controls -->
+            <div class="space-y-3">
+                <label for="audioFile" class="audio-input-label flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                    <div class="flex flex-col items-center justify-center pt-2 pb-3">
+                        <svg class="w-6 h-6 mb-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+                        <p class="text-[10px] text-gray-400 font-medium" id="fileName">Upload Music to Sync</p>
+                    </div>
+                    <input type="file" id="audioFile" accept="audio/*" class="hidden" />
+                </label>
+                
+                <button id="playPauseBtn" class="btn-toggle w-full py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-[10px] font-bold tracking-widest text-cyan-400 uppercase hidden">
+                    Play / Pause
+                </button>
             </div>
 
-            <div>
-                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
-                    <span>MAX CONNECTIONS</span>
-                    <span id="maxConnVal">4</span>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                        <span>AUDIO SENSITIVITY</span>
+                        <span id="senseVal">1.5x</span>
+                    </div>
+                    <input type="range" id="sensitivity" min="0.5" max="4.0" step="0.1" value="1.5" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
                 </div>
-                <input type="range" id="maxConnections" min="1" max="10" value="4" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
-            </div>
 
-            <div>
-                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
-                    <span>LINK DISTANCE</span>
-                    <span id="distVal">110px</span>
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
+                        <span>PARTICLE COUNT</span>
+                        <span id="countVal">250</span>
+                    </div>
+                    <input type="range" id="particleCount" min="50" max="600" value="250" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
                 </div>
-                <input type="range" id="linkDistance" min="50" max="200" value="110" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-[10px] font-bold mb-2 tracking-widest opacity-60">
-                    <span>GRAVITY</span>
-                    <span id="gravityVal">1.0x</span>
-                </div>
-                <input type="range" id="gravity" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
             </div>
 
             <div class="pt-2 border-t border-white/5">
                 <p class="text-[9px] opacity-40 leading-relaxed">
-                    Extended: Up to 800 Particles & Dynamic Connection Limiter. <br>
-                    Optimized: O(N) Spatial Hash Grid for High-Density Rendering.
+                    FFT Analysis: Bass (Repulsion), Mid/High (Orbit & Link). <br>
+                    Optimized: O(N) Spatial Hash Grid Rendering.
                 </p>
             </div>
         </div>
@@ -93,33 +108,34 @@
         const canvas = document.getElementById('luminaCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
         const fpsDisplay = document.getElementById('fps-monitor');
-
+        const audioInput = document.getElementById('audioFile');
+        const fileName = document.getElementById('fileName');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const senseSlider = document.getElementById('sensitivity');
         const countSlider = document.getElementById('particleCount');
-        const maxConnSlider = document.getElementById('maxConnections');
-        const distSlider = document.getElementById('linkDistance');
-        const gravitySlider = document.getElementById('gravity');
 
         let width, height, dpr;
         let particles = [];
         const cellSize = 80;
-        let cols, rows;
-        let grid = [];
+        let cols, rows, grid = [];
+
+        // Audio Context Variables
+        let audioCtx, analyser, dataArray, source, audioBuffer;
+        let isPlaying = false;
+        let audioData = { bass: 0, mid: 0, treble: 0, avg: 0 };
 
         let config = {
             count: 250,
-            maxConnections: 4,
             linkDist: 110,
             gravity: 1.0,
             damping: 0.94,
             safetyZone: 60,
-            repulsion: 0.5
+            repulsion: 0.5,
+            sensitivity: 1.5
         };
 
         class Particle {
-            constructor() {
-                this.init();
-            }
-
+            constructor() { this.init(); }
             init() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
@@ -133,12 +149,26 @@
             }
 
             update(mx, my, others) {
+                // 1. Audio Reaction (Bass Repulsion)
+                if (audioData.bass > 0.75) {
+                    const force = audioData.bass * config.sensitivity * 1.5;
+                    // Push away from center or mouse
+                    const targetX = mx !== null ? mx : width / 2;
+                    const targetY = my !== null ? my : height / 2;
+                    const dx = this.x - targetX;
+                    const dy = this.y - targetY;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    this.vx += (dx / d) * force;
+                    this.vy += (dy / d) * force;
+                    this.hot = Math.max(this.hot, audioData.bass);
+                }
+
+                // 2. Mouse Interaction (Attraction & Orbit)
                 if (mx !== null) {
                     const dx = mx - this.x;
                     const dy = my - this.y;
                     const dSq = dx * dx + dy * dy;
                     const d = Math.sqrt(dSq);
-
                     if (d < 400) {
                         if (d > config.safetyZone) {
                             const pull = (d - config.safetyZone) * 0.004 * config.gravity;
@@ -149,20 +179,24 @@
                             this.vx -= (dx / d) * push;
                             this.vy -= (dy / d) * push;
                         }
+                        // Orbit Speed reacts to Mid/High
                         const angle = Math.atan2(dy, dx);
-                        const orbit = 0.025 * config.gravity * (400 - d) / 400;
+                        const orbitBase = 0.025 * config.gravity;
+                        const orbitAudio = audioData.mid * 0.05 * config.sensitivity;
+                        const orbit = (orbitBase + orbitAudio) * (400 - d) / 400;
                         this.vx += Math.cos(angle + 1.57) * orbit;
                         this.vy += Math.sin(angle + 1.57) * orbit;
                     }
                 }
 
+                // 3. Inter-particle Repulsion
                 for (let otherIdx of others) {
                     const p2 = particles[otherIdx];
                     if (p2 === this) continue;
                     const dx = p2.x - this.x;
                     const dy = p2.y - this.y;
                     const dSq = dx * dx + dy * dy;
-                    const minDist = 15;
+                    const minDist = 15 + audioData.bass * 20;
                     if (dSq < minDist * minDist && dSq > 0) {
                         const d = Math.sqrt(dSq);
                         const force = (minDist - d) * config.repulsion;
@@ -178,13 +212,14 @@
                 if (this.hot > 0) this.hot -= 0.02;
                 if (this.x < 0) this.x = width; else if (this.x > width) this.x = 0;
                 if (this.y < 0) this.y = height; else if (this.y > height) this.y = 0;
-                
-                this.connections = 0; // Reset for next frame
+                this.connections = 0;
             }
 
             draw() {
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, 6.28);
+                // Size reacts to Treble
+                const r = this.radius * (1 + audioData.treble * 0.8);
+                ctx.arc(this.x, this.y, r, 0, 6.28);
                 ctx.fillStyle = this.hot > 0.1 ? `rgba(255, 255, 255, ${this.hot})` : `rgba(0, 242, 255, ${this.opacity})`;
                 ctx.fill();
             }
@@ -196,15 +231,12 @@
 
         function resize() {
             dpr = window.devicePixelRatio || 1;
-            const displayWidth = window.innerWidth;
-            const displayHeight = window.innerHeight;
-            canvas.width = displayWidth * dpr;
-            canvas.height = displayHeight * dpr;
-            canvas.style.width = displayWidth + 'px';
-            canvas.style.height = displayHeight + 'px';
+            width = canvas.width = window.innerWidth * dpr;
+            height = canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
             ctx.scale(dpr, dpr);
-            width = displayWidth;
-            height = displayHeight;
+            width /= dpr; height /= dpr;
             cols = Math.ceil(width / cellSize);
             rows = Math.ceil(height / cellSize);
             initParticles();
@@ -212,14 +244,30 @@
 
         function initParticles() {
             particles = [];
-            for (let i = 0; i < config.count; i++) {
-                particles.push(new Particle());
+            for (let i = 0; i < config.count; i++) particles.push(new Particle());
+        }
+
+        function analyzeAudio() {
+            if (!analyser || !isPlaying) {
+                audioData = { bass: 0, mid: 0, treble: 0, avg: 0 };
+                return;
             }
+            analyser.getByteFrequencyData(dataArray);
+            let b = 0, m = 0, t = 0;
+            for (let i = 0; i < 10; i++) b += dataArray[i];
+            for (let i = 10; i < 50; i++) m += dataArray[i];
+            for (let i = 50; i < 100; i++) t += dataArray[i];
+            audioData.bass = (b / 10) / 255;
+            audioData.mid = (m / 40) / 255;
+            audioData.treble = (t / 50) / 255;
+            audioData.avg = (audioData.bass + audioData.mid + audioData.treble) / 3;
         }
 
         function loop() {
             ctx.fillStyle = '#020205';
             ctx.fillRect(0, 0, width, height);
+
+            analyzeAudio();
 
             grid = Array.from({ length: cols * rows }, () => []);
             for (let i = 0; i < particles.length; i++) {
@@ -245,7 +293,9 @@
             }
 
             ctx.globalCompositeOperation = 'lighter';
-            const distSqLimit = config.linkDist * config.linkDist;
+            // Link Distance reacts to Mid/High
+            const dynamicLinkDist = config.linkDist * (1 + audioData.mid * 0.5);
+            const distSqLimit = dynamicLinkDist * dynamicLinkDist;
 
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
@@ -258,17 +308,18 @@
                         const nCell = grid[nr * cols + nc];
                         for (let i of cell) {
                             const p1 = particles[i];
-                            if (p1.connections >= config.maxConnections) continue;
+                            if (p1.connections >= 5) continue;
                             for (let j of nCell) {
                                 if (i === j) continue;
                                 const p2 = particles[j];
-                                if (p2.connections >= config.maxConnections) continue;
+                                if (p2.connections >= 5) continue;
                                 const dx = p1.x - p2.x;
                                 const dy = p1.y - p2.y;
                                 const dSq = dx * dx + dy * dy;
                                 if (dSq < distSqLimit) {
                                     const d = Math.sqrt(dSq);
-                                    const alpha = (1 - d / config.linkDist) * 0.5;
+                                    // Alpha reacts to Volume (Avg)
+                                    const alpha = (1 - d / dynamicLinkDist) * (0.4 + audioData.avg * 0.6);
                                     ctx.beginPath();
                                     ctx.moveTo(p1.x, p1.y);
                                     ctx.lineTo(p2.x, p2.y);
@@ -280,10 +331,10 @@
                                         grad.addColorStop(1, `rgba(188, 19, 254, ${alpha})`);
                                         ctx.strokeStyle = grad;
                                     }
-                                    ctx.lineWidth = (1 - d / config.linkDist) * 1.2;
+                                    // Line Width reacts to Volume
+                                    ctx.lineWidth = (1 - d / dynamicLinkDist) * (1.2 + audioData.avg * 2);
                                     ctx.stroke();
-                                    p1.connections++;
-                                    p2.connections++;
+                                    p1.connections++; p2.connections++;
                                 }
                             }
                         }
@@ -293,6 +344,7 @@
 
             for (let p of particles) p.draw();
             ctx.globalCompositeOperation = 'source-over';
+
             frames++;
             const now = performance.now();
             if (now > lastTime + 1000) {
@@ -302,48 +354,68 @@
             requestAnimationFrame(loop);
         }
 
+        // Audio Setup
+        audioInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            fileName.innerText = file.name;
+            playPauseBtn.classList.remove('hidden');
+
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                audioCtx.decodeAudioData(e.target.result, function(buffer) {
+                    audioBuffer = buffer;
+                    startAudio();
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function startAudio() {
+            if (source) source.stop();
+            source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            source.loop = true;
+            source.start(0);
+            isPlaying = true;
+            audioCtx.resume();
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+                isPlaying = true;
+            } else if (audioCtx.state === 'running') {
+                audioCtx.suspend();
+                isPlaying = false;
+            }
+        });
+
         function handlePointer(e) {
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
         }
 
-        canvas.addEventListener('mousedown', (e) => {
-            handlePointer(e);
-            const blastRadius = 500;
-            for (let p of particles) {
-                const dx = p.x - mouseX;
-                const dy = p.y - mouseY;
-                const dSq = dx * dx + dy * dy;
-                if (dSq < blastRadius * blastRadius) {
-                    const d = Math.sqrt(dSq);
-                    const force = (blastRadius - d) / 10;
-                    p.vx += (dx / d) * force;
-                    p.vy += (dy / d) * force;
-                    p.hot = 1.0;
-                }
-            }
-        });
-
         window.addEventListener('mousemove', handlePointer);
         window.addEventListener('resize', resize);
-
+        senseSlider.addEventListener('input', (e) => {
+            config.sensitivity = parseFloat(e.target.value);
+            document.getElementById('senseVal').innerText = config.sensitivity.toFixed(1) + 'x';
+        });
         countSlider.addEventListener('input', (e) => {
             config.count = parseInt(e.target.value);
             document.getElementById('countVal').innerText = config.count;
             initParticles();
-        });
-        maxConnSlider.addEventListener('input', (e) => {
-            config.maxConnections = parseInt(e.target.value);
-            document.getElementById('maxConnVal').innerText = config.maxConnections;
-        });
-        distSlider.addEventListener('input', (e) => {
-            config.linkDist = parseInt(e.target.value);
-            document.getElementById('distVal').innerText = config.linkDist + 'px';
-        });
-        gravitySlider.addEventListener('input', (e) => {
-            config.gravity = parseFloat(e.target.value);
-            document.getElementById('gravityVal').innerText = config.gravity.toFixed(1) + 'x';
         });
 
         resize();
